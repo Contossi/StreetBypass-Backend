@@ -5,11 +5,37 @@
 //POST metoda za dodavanje informacija i objekta na specificna mjesta na mapi te ubacivanje koordinata u db. 
 import express from 'express';
 import { connectToDatabase } from './db.js';
+import createObstacle from './models/Obstacle.js';
 
 const app = express();
+app.use(express.json());
 let db = await connectToDatabase();
 
-app.use(express.json());
+await obstaclesCollection.createIndex({ location: '2dsphere' });
+
+const testObstacle = createObstacle({
+    type:'lp1', //crv
+
+    location: {
+        type: 'Point',
+        coordinates: [13.853656,44.85282]
+    },
+     city: 'Pula',
+     verified: true,
+     addedBy: 'user101'
+});
+
+async function testSave() {
+    try {
+        const result = await obstaclesCollection.insertOne(testObstacle);
+        console.log('Prepreka uspješno pohranjena', result_insertedId);
+        console.log(' createdAt: ', testObstacle.createdAt);
+    }   catch (err) {
+        console.error('Greška pri pohrani:', err.message);
+    }
+}
+await testSave();
+
 
 app.get("/", (req, res) => {
     res.send("StreetBypass navigacija");

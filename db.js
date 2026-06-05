@@ -1,10 +1,10 @@
 //Spajanje na bazu
 import dns from 'node:dns';
-dns.setServers(['8.8.8.8', '1.1.1.1']);
 //Nakon instalacije Node.js 24.16.0, aplikacija više nije radila pa su potrebne ove dvije linije koda kako bi opet sve funkcioniralo kako treba
 import { MongoClient } from 'mongodb';
 import { config } from 'dotenv';
 
+dns.setServers(['8.8.8.8', '1.1.1.1']);
 config();
 
 let mongoURI = process.env.MONGO_URI;
