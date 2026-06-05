@@ -7,22 +7,30 @@ import { config } from 'dotenv';
 dns.setServers(['8.8.8.8', '1.1.1.1']);
 config();
 
-let mongoURI = process.env.MONGO_URI;
-let db_name = process.env.MONGO_DB_NAME;
-let db = await connectToDatabase();
+const mongoURI = process.env.MONGO_URI;
+const dbName = process.env.MONGO_DB_NAME;
+let dbI = null;
 
 async function connectToDatabase() {
     try {
         const client = new MongoClient(mongoURI);
         await client.connect(); 
         console.log('Uspješno spajanje na bazu podataka');
-        let db = client.db('naziv_baze_podataka'); 
-        return db;
+        dbI = client.db(dbName); 
+        await dbI.collection('obstacles').createIndex({ location: "2dsphere" });
+        
+        console.log("Upsiješno spajanje na bazu podataka");
+        return dbI;
     } catch (error) {
         console.error('Greška prilikom spajanja na bazu podataka', error);
         throw error;
     }
 }
+function getDb() {
+    if (!dbI) {
+        throw new Error("Baza podataka nije inicijalizirana! Prvo pokreni connectToDatabase().");
+    }
+    return dbI;
+}
 
-
-export { connectToDatabase };
+export { connectToDatabase, getDb };

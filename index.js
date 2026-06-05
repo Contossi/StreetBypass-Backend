@@ -4,44 +4,53 @@
 //GET metoda "/", koja ce prikazivat mapu iz mapbox,
 //POST metoda za dodavanje informacija i objekta na specificna mjesta na mapi te ubacivanje koordinata u db. 
 import express from 'express';
-import { connectToDatabase } from './db.js';
-import createObstacle from './models/Obstacle.js';
+import { connectToDatabase, getDb } from './db.js';
+import { ObjectId } from 'mongodb';
 
 const app = express();
 app.use(express.json());
-let db = await connectToDatabase();
+await connectToDatabase();
 
-await obstaclesCollection.createIndex({ location: '2dsphere' });
 
-const testObstacle = createObstacle({
-    type:'lp1', //crv
-
-    location: {
-        type: 'Point',
-        coordinates: [13.853656,44.85282]
-    },
-     city: 'Pula',
-     verified: true,
-     addedBy: 'user101'
-});
-
-async function testSave() {
+app.get("/api/obstacles", async (req, res) => {
     try {
-        const result = await obstaclesCollection.insertOne(testObstacle);
-        console.log('Prepreka uspješno pohranjena', result_insertedId);
-        console.log(' createdAt: ', testObstacle.createdAt);
-    }   catch (err) {
-        console.error('Greška pri pohrani:', err.message);
+        const lng = parseFloat(req.query.lng);
+        const lat = parseFloat(req.query.lat);
+
+        const db = getDb();
+        
+        const obstacles = await db.collection('obstacles').find({
+            location: {
+                $near: {
+                    $geometry: {
+                        type: "Point",
+                        coordinates: [lng, lat]
+                    },
+                    $maxDistance: 10000
+                }
+            }
+        }).toArray();
+        res.status(200).json(obstacles);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
     }
-}
-await testSave();
-
-
-app.get("/", (req, res) => {
-    res.send("StreetBypass navigacija");
 });
 
-
+app.post("/api/obstacles", async (req, res) => {
+    try {
+        const {type,location} = req.body;
+        const newObstacle = {
+            type: type,
+            location: location,
+            createdAt: new Date()
+        };
+        const db = getDb();
+        const result = await db.collection('obstacles').insertOne(newObstacle);
+        res.status(201).json({success: true, id: result.insertedId });
+    } catch (error) {
+        res.status(500).json({error: error.message});
+    }
+});
 
 
 const PORT = 3000;
