@@ -6,9 +6,11 @@
 import express from 'express';
 import { connectToDatabase, getDb } from './db.js';
 import { ObjectId } from 'mongodb';
+import cors from 'cors'
 
 const app = express();
 app.use(express.json());
+app.use(cors());
 await connectToDatabase();
 
 
