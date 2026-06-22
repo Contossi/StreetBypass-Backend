@@ -16,19 +16,40 @@ await connectToDatabase();
 
 app.get("/api/obstacles", async (req, res) => {
     try {
-        const lng = parseFloat(req.query.lng);
-        const lat = parseFloat(req.query.lat);
+        const west = Number(req.query.west)
+        const south = Number(req.query.south)
+        const east = Number(req.query.east)
+        const north = Number(req.query.north)
+    
+        if (
+            !Number.isFinite(west) ||
+            !Number.isFinite(south) ||
+            !Number.isFinite(east) ||
+            !Number.isFinite(north)
+        ) {
+            return res.status(400).json({
+                error: "Valid west, south, east and north bounds are required"
+            })
+        }
+        const viewport ={
+            type:"Polygon",
+            coordinates: [[
+                [west,south],
+                [east, south],
+                [east, north],
+                [west, north],
+                [west, north],
+                [west, south]
+            ]]
+        }
 
         const db = getDb();
         
         const obstacles = await db.collection('obstacles').find({
             location: {
-                $near: {
-                    $geometry: {
-                        type: "Point",
-                        coordinates: [lng, lat]
-                    },
-                    $maxDistance: 10000
+                $geoIntersects: {
+                    $geometry: viewport
+                
                 }
             }
         }).toArray();
@@ -88,6 +109,3 @@ app.listen(PORT, error => {
         console.log(`Server radi na http://localhost:${PORT}`);
     }
 })
-
-console.log(process.env.MONGO_URI);
-console.log(process.env.MONGO_DB_NAME);
