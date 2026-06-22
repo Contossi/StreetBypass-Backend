@@ -48,12 +48,37 @@ app.post("/api/obstacles", async (req, res) => {
         };
         const db = getDb();
         const result = await db.collection('obstacles').insertOne(newObstacle);
-        res.status(201).json({success: true, id: result.insertedId });
+
+        res.status(201).json({
+            success: true,
+            obstacle:{
+                _id: result.insertedId.toString(),
+                ...newObstacle
+            }
+        });
     } catch (error) {
         res.status(500).json({error: error.message});
     }
 });
 
+app.delete("/api/obstacles/:id", async (req,res) => {
+    try {
+        const id = req.params.id
+        const db = getDb()
+        const result = await db.collection('obstacles').deleteOne({
+            _id: new ObjectId(id)
+        })
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({error: "Obstacle not found"})
+        }
+
+        res.status(200).json({success: true})
+    
+    }   catch (error){
+        res.status(500).json({error: error.message})
+    }
+})      
 
 const PORT = 3000;
 app.listen(PORT, error => {
