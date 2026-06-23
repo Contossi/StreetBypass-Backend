@@ -93,6 +93,9 @@ app.post("/api/login", async (req, res) => {
             return res.status(401).json({ error: 'Neispravni podaci za prijavu' })
         }
         const token = await generateJWT({ id: user._id.toString(), username: user.username })
+        if (!token) {
+            return res.status(500).json({ error: 'Greška pri generiranju tokena - provjeri JWT_SECRET na serveru' })
+        }
         res.status(200).json({ jwt_token: token })
     } catch (error) {
         res.status(500).json({ error: error.message })
