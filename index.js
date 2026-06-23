@@ -1,4 +1,3 @@
-//glavni file
 import express from 'express';
 import { connectToDatabase, getDb } from './db.js';
 import { ObjectId } from 'mongodb';

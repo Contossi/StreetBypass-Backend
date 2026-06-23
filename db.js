@@ -1,6 +1,4 @@
-//Spajanje na bazu
 import dns from 'node:dns';
-//Nakon instalacije Node.js 24.16.0, aplikacija više nije radila pa su potrebne ove dvije linije koda kako bi opet sve funkcioniralo kako treba
 import { MongoClient } from 'mongodb';
 import { config } from 'dotenv';
 
