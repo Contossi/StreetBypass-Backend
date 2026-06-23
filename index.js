@@ -1,12 +1,9 @@
 //glavni file
-//Ovdje ce se nalazit: 
-//spajanje sa db.js
-//GET metoda "/", koja ce prikazivat mapu iz mapbox,
-//POST metoda za dodavanje informacija i objekta na specificna mjesta na mapi te ubacivanje koordinata u db. 
 import express from 'express';
 import { connectToDatabase, getDb } from './db.js';
 import { ObjectId } from 'mongodb';
 import cors from 'cors'
+import { hashPassword, checkPassword, generateJWT, authMiddleware } from './auth.js'
 
 const app = express();
 app.use(express.json());
@@ -20,7 +17,7 @@ app.get("/api/obstacles", async (req, res) => {
         const south = Number(req.query.south)
         const east = Number(req.query.east)
         const north = Number(req.query.north)
-    
+
         if (
             !Number.isFinite(west) ||
             !Number.isFinite(south) ||
@@ -44,12 +41,12 @@ app.get("/api/obstacles", async (req, res) => {
         }
 
         const db = getDb();
-        
+
         const obstacles = await db.collection('obstacles').find({
             location: {
                 $geoIntersects: {
                     $geometry: viewport
-                
+
                 }
             }
         }).toArray();
@@ -59,13 +56,58 @@ app.get("/api/obstacles", async (req, res) => {
     }
 });
 
-app.post("/api/obstacles", async (req, res) => {
+app.post("/api/register", async (req, res) => {
+    try {
+        const { username, password } = req.body
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Korisničko ime i lozinka su obavezni' })
+        }
+        const db = getDb()
+        const existing = await db.collection('users').findOne({ username })
+        if (existing) {
+            return res.status(400).json({ error: 'Korisničko ime već postoji' })
+        }
+        const hashedPassword = await hashPassword(password)
+        if (!hashedPassword) {
+            return res.status(500).json({ error: 'Greška pri hashiranju lozinke' })
+        }
+        await db.collection('users').insertOne({ username, password: hashedPassword })
+        res.status(201).json({ message: 'Korisnik uspješno registriran' })
+    } catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+})
+
+app.post("/api/login", async (req, res) => {
+    try {
+        const { username, password } = req.body
+        if (!username || !password) {
+            return res.status(400).json({ error: 'Korisničko ime i lozinka su obavezni' })
+        }
+        const db = getDb()
+        const user = await db.collection('users').findOne({ username })
+        if (!user) {
+            return res.status(401).json({ error: 'Neispravni podaci za prijavu' })
+        }
+        const valid = await checkPassword(password, user.password)
+        if (!valid) {
+            return res.status(401).json({ error: 'Neispravni podaci za prijavu' })
+        }
+        const token = await generateJWT({ id: user._id.toString(), username: user.username })
+        res.status(200).json({ jwt_token: token })
+    } catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+})
+
+app.post("/api/obstacles", authMiddleware, async (req, res) => {
     try {
         const {type,location} = req.body;
         const newObstacle = {
             type: type,
             location: location,
-            createdAt: new Date()
+            createdAt: new Date(),
+            addedBy: req.authorised_user.username
         };
         const db = getDb();
         const result = await db.collection('obstacles').insertOne(newObstacle);
@@ -81,7 +123,8 @@ app.post("/api/obstacles", async (req, res) => {
         res.status(500).json({error: error.message});
     }
 });
-app.put("/api/obstacles/:id", async (req,res) => {
+
+app.put("/api/obstacles/:id", authMiddleware, async (req,res) => {
     try{
         const id =req.params.id
         const {type,location} = req.body
@@ -128,7 +171,7 @@ app.put("/api/obstacles/:id", async (req,res) => {
     }
 })
 
-app.delete("/api/obstacles/:id", async (req,res) => {
+app.delete("/api/obstacles/:id", authMiddleware, async (req,res) => {
     try {
         const id = req.params.id
         const db = getDb()
@@ -141,11 +184,11 @@ app.delete("/api/obstacles/:id", async (req,res) => {
         }
 
         res.status(200).json({success: true})
-    
+
     }   catch (error){
         res.status(500).json({error: error.message})
     }
-})      
+})
 
 const PORT = 3000;
 app.listen(PORT, error => {
