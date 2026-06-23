@@ -81,6 +81,52 @@ app.post("/api/obstacles", async (req, res) => {
         res.status(500).json({error: error.message});
     }
 });
+app.put("/api/obstacles/:id", async (req,res) => {
+    try{
+        const id =req.params.id
+        const {type,location} = req.body
+
+        if(!ObjectId.isValid(id)) {
+            return res.status(400).json({ error: "invalid obstacle ID" })
+        }
+
+        if(!type || !location) {
+            return res.status(400).json({
+                error:"type and location are required"
+            })
+        }
+
+        const db = getDb()
+
+        const result = await db.collection("obstacles").updateOne(
+            { _id: new ObjectId(id) },
+            {
+                $set: {
+                    type,
+                    location,
+                    updatedAt:new Date()
+                }
+            }
+        )
+
+        if(result.matchedCount === 0) {
+            return res.status(404).json({ error: "Obstacle not found"})
+        }
+        const updatedObstacle = await db.collection("obstacles").findOne({
+            _id: new ObjectId(id)
+        })
+
+        res.status(200).json({
+            success: true,
+            obstacle: {
+                ...updatedObstacle,
+                _id: updatedObstacle._id.toString()
+            }
+        })
+    }   catch (error) {
+        res.status(500).json({ error: error.message })
+    }
+})
 
 app.delete("/api/obstacles/:id", async (req,res) => {
     try {
